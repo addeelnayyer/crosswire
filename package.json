@@ -5,6 +5,6 @@
   "license": "ISC",
   "scripts": {
     "start": "npx serve public",
-    "deploy": "npx wrangler pages deploy public --project-name webrtc-file-transfer"
+    "deploy": "npx wrangler pages deploy public --project-name crosswire360"
   }
 }
