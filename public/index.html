@@ -5,80 +5,715 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link
-      rel="shortcut icon"
-      href="https://static-00.iconduck.com/assets.00/webrtc-icon-512x496-cef4xjw5.png"
-      type="image/x-icon"
-    />
-    <link
       rel="icon"
-      href="https://static-00.iconduck.com/assets.00/webrtc-icon-512x496-cef4xjw5.png"
-      type="image/x-icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230a0e12'/%3E%3Cpath d='M9 16h14' stroke='%23e8e6df' stroke-width='2'/%3E%3Ccircle cx='9' cy='16' r='4.5' fill='%23ffb020'/%3E%3Ccircle cx='23' cy='16' r='4.5' fill='%2335e0d0'/%3E%3C/svg%3E"
+      type="image/svg+xml"
     />
-    <title>Playground | WebRTC</title>
-  </head>
-  <body>
+    <title>CROSSWIRE — direct peer-to-peer transfer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+
     <style>
+      :root {
+        --bg: #0a0e12;
+        --bg-2: #0d1319;
+        --panel: #12181f;
+        --panel-2: #161d25;
+        --ink: #e9e6dd;
+        --muted: #6c7883;
+        --faint: #3a444e;
+        --line: rgba(233, 230, 221, 0.09);
+        --amber: #ffb020;
+        --amber-dim: #7a5a1c;
+        --cyan: #35e0d0;
+        --cyan-dim: #1c6a64;
+        --live: #62e08a;
+        --display: "Chakra Petch", system-ui, sans-serif;
+        --mono: "IBM Plex Mono", ui-monospace, monospace;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      html {
+        -webkit-text-size-adjust: 100%;
+      }
+
       body {
-        padding: 20px;
+        min-height: 100vh;
+        font-family: var(--mono);
+        color: var(--ink);
+        background: var(--bg);
+        background-image:
+          radial-gradient(
+            120% 90% at 50% -10%,
+            rgba(255, 176, 32, 0.06),
+            transparent 55%
+          ),
+          radial-gradient(
+            120% 90% at 50% 110%,
+            rgba(53, 224, 208, 0.05),
+            transparent 55%
+          ),
+          linear-gradient(var(--line) 1px, transparent 1px),
+          linear-gradient(90deg, var(--line) 1px, transparent 1px);
+        background-size: 100% 100%, 100% 100%, 44px 44px, 44px 44px;
+        background-position: 0 0, 0 0, -1px -1px, -1px -1px;
+        line-height: 1.5;
+        overflow-x: hidden;
+      }
+
+      /* scanlines + grain overlays */
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 9;
+        background: repeating-linear-gradient(
+          0deg,
+          rgba(0, 0, 0, 0.16) 0,
+          rgba(0, 0, 0, 0.16) 1px,
+          transparent 2px,
+          transparent 3px
+        );
+        opacity: 0.35;
+        mix-blend-mode: multiply;
+      }
+      body::after {
+        content: "";
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 8;
+        opacity: 0.05;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      }
+
+      .wrap {
+        position: relative;
+        z-index: 1;
+        max-width: 1140px;
+        margin: 0 auto;
+        padding: clamp(28px, 5vw, 64px) clamp(18px, 4vw, 40px) 80px;
+      }
+
+      /* ---------- header ---------- */
+      header {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 20px 32px;
+        padding-bottom: 26px;
+        border-bottom: 1px solid var(--line);
+        animation: rise 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+      }
+      .glyph {
+        flex: none;
+        width: 46px;
+        height: 46px;
+      }
+      .glyph .n1 {
+        fill: var(--amber);
+        filter: drop-shadow(0 0 6px rgba(255, 176, 32, 0.6));
+      }
+      .glyph .n2 {
+        fill: var(--cyan);
+        filter: drop-shadow(0 0 6px rgba(53, 224, 208, 0.6));
+      }
+      .glyph .wire {
+        stroke: var(--ink);
+        stroke-width: 2;
+        stroke-dasharray: 3 3;
+        animation: flow 1.2s linear infinite;
+      }
+      .wordmark {
+        font-family: var(--display);
+        font-weight: 700;
+        font-size: clamp(30px, 5vw, 46px);
+        letter-spacing: 0.14em;
+        line-height: 1;
+        text-transform: uppercase;
+      }
+      .wordmark b {
+        color: var(--amber);
+        font-weight: 700;
+      }
+      .wordmark i {
+        color: var(--cyan);
+        font-style: normal;
+      }
+      .tag {
+        margin-top: 7px;
+        font-size: 11.5px;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      /* status readout */
+      .readout {
+        font-family: var(--mono);
+        text-align: right;
+        min-width: 220px;
+      }
+      .readout .lbl {
+        font-size: 10px;
+        letter-spacing: 0.3em;
+        text-transform: uppercase;
+        color: var(--faint);
+      }
+      #connectionStatus {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 8px;
+        font-family: var(--display);
+        font-weight: 600;
+        font-size: 15px;
+        letter-spacing: 0.04em;
+        color: var(--muted);
+        transition: color 0.4s ease;
+      }
+      #connectionStatus::before {
+        content: "";
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: var(--faint);
+        box-shadow: 0 0 0 0 transparent;
+        animation: pulse 1.6s ease-in-out infinite;
+      }
+      #connectionStatus[data-state="wait"] {
+        color: var(--amber);
+      }
+      #connectionStatus[data-state="wait"]::before {
+        background: var(--amber);
+        box-shadow: 0 0 10px 1px var(--amber);
+      }
+      #connectionStatus[data-state="ready"] {
+        color: var(--cyan);
+      }
+      #connectionStatus[data-state="ready"]::before {
+        background: var(--cyan);
+        box-shadow: 0 0 10px 1px var(--cyan);
+      }
+      #connectionStatus[data-state="on"] {
+        color: var(--live);
+      }
+      #connectionStatus[data-state="on"]::before {
+        background: var(--live);
+        box-shadow: 0 0 12px 2px var(--live);
+        animation: none;
+      }
+
+      /* ---------- protocol strip ---------- */
+      .protocol {
+        margin-top: 30px;
+        border: 1px solid var(--line);
+        background: linear-gradient(180deg, var(--bg-2), transparent);
+        animation: rise 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) 0.08s both;
+      }
+      .protocol h2 {
+        font-family: var(--display);
+        font-weight: 600;
+        font-size: 11px;
+        letter-spacing: 0.3em;
+        text-transform: uppercase;
+        color: var(--muted);
+        padding: 12px 18px;
+        border-bottom: 1px solid var(--line);
+      }
+      .protocol ol {
+        list-style: none;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      }
+      .protocol li {
+        counter-increment: step;
+        padding: 15px 18px;
+        border-right: 1px solid var(--line);
+        border-bottom: 1px solid var(--line);
+        font-size: 12.5px;
+        color: var(--muted);
+        position: relative;
+      }
+      .protocol li::before {
+        content: counter(step, decimal-leading-zero);
+        display: block;
+        font-family: var(--display);
+        font-weight: 700;
+        font-size: 12px;
+        letter-spacing: 0.1em;
+        color: var(--amber);
+        margin-bottom: 6px;
+      }
+      .protocol li strong {
+        color: var(--ink);
+        font-weight: 500;
+      }
+      .protocol ol {
+        counter-reset: step;
+      }
+
+      /* ---------- channels ---------- */
+      .channels {
+        margin-top: 30px;
+        display: grid;
+        grid-template-columns: 1fr 64px 1fr;
+        align-items: stretch;
+      }
+
+      .station {
+        border: 1px solid var(--line);
+        background: var(--panel);
+        display: flex;
+        flex-direction: column;
+        position: relative;
+        overflow: hidden;
+        animation: rise 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+      }
+      .station.local {
+        animation-delay: 0.16s;
+      }
+      .station.remote {
+        animation-delay: 0.24s;
+      }
+      .station::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 2px;
+      }
+      .station.local::before {
+        background: linear-gradient(90deg, var(--amber), transparent);
+      }
+      .station.remote::before {
+        background: linear-gradient(270deg, var(--cyan), transparent);
+      }
+
+      .station .head {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 16px 18px 12px;
+      }
+      .station .code {
+        font-family: var(--display);
+        font-weight: 700;
+        font-size: 20px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+      }
+      .local .code {
+        color: var(--amber);
+      }
+      .remote .code {
+        color: var(--cyan);
+      }
+      .station .role {
+        font-size: 10px;
+        letter-spacing: 0.24em;
+        text-transform: uppercase;
+        color: var(--faint);
+      }
+
+      textarea {
+        flex: 1;
+        min-height: 190px;
+        resize: vertical;
+        width: 100%;
+        border: none;
+        border-top: 1px solid var(--line);
+        border-bottom: 1px solid var(--line);
+        background: var(--bg);
+        color: var(--ink);
+        font-family: var(--mono);
+        font-size: 11.5px;
+        line-height: 1.65;
+        padding: 15px 18px;
+        outline: none;
+        transition: box-shadow 0.3s ease, background 0.3s ease;
+      }
+      textarea::placeholder {
+        color: var(--faint);
+      }
+      .local textarea:focus {
+        background: var(--bg-2);
+        box-shadow: inset 0 0 0 1px var(--amber-dim),
+          inset 0 0 28px rgba(255, 176, 32, 0.06);
+      }
+      .remote textarea:focus {
+        background: var(--bg-2);
+        box-shadow: inset 0 0 0 1px var(--cyan-dim),
+          inset 0 0 28px rgba(53, 224, 208, 0.06);
+      }
+
+      button {
+        font-family: var(--display);
+        font-weight: 600;
+        font-size: 13px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--ink);
+        background: transparent;
+        border: none;
+        padding: 15px 18px;
+        cursor: pointer;
+        text-align: left;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        position: relative;
+        transition: color 0.25s ease, background 0.25s ease,
+          letter-spacing 0.25s ease;
+      }
+      button .arw {
+        font-family: var(--mono);
+        opacity: 0.6;
+        transition: transform 0.25s ease, opacity 0.25s ease;
+      }
+      button:hover {
+        letter-spacing: 0.2em;
+      }
+      button:hover .arw {
+        transform: translateX(4px);
+        opacity: 1;
+      }
+      .local button {
+        color: var(--amber);
+      }
+      .local button:hover {
+        background: var(--amber);
+        color: #0a0e12;
+      }
+      .remote button {
+        color: var(--cyan);
+      }
+      .remote button:hover {
+        background: var(--cyan);
+        color: #0a0e12;
+      }
+      button:active {
+        transform: translateY(1px);
+      }
+
+      /* center connector */
+      .link {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+        color: var(--faint);
+      }
+      .link .rail {
+        width: 1px;
+        flex: 1;
+        background: repeating-linear-gradient(
+          180deg,
+          var(--line) 0 6px,
+          transparent 6px 12px
+        );
+      }
+      .link .hub {
+        font-family: var(--display);
+        font-size: 20px;
+        color: var(--muted);
+      }
+
+      /* ---------- transfer bay ---------- */
+      .bay {
+        margin-top: 30px;
+        border: 1px solid var(--line);
+        background: var(--panel);
+        padding: 22px;
+        display: grid;
+        gap: 18px;
+        animation: rise 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) 0.32s both;
+      }
+      .bay h2 {
+        font-family: var(--display);
+        font-weight: 600;
+        font-size: 11px;
+        letter-spacing: 0.3em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .bay-row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 16px;
+      }
+
+      input[type="file"] {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--muted);
+        flex: 1;
+        min-width: 220px;
+      }
+      input[type="file"]::file-selector-button {
+        font-family: var(--display);
+        font-weight: 600;
+        font-size: 12px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--ink);
+        background: var(--panel-2);
+        border: 1px solid var(--line);
+        padding: 10px 16px;
+        margin-right: 14px;
+        cursor: pointer;
+        transition: border-color 0.25s ease, color 0.25s ease;
+      }
+      input[type="file"]::file-selector-button:hover {
+        border-color: var(--amber);
+        color: var(--amber);
+      }
+
+      .meter {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+      progress {
+        -webkit-appearance: none;
+        appearance: none;
+        flex: 1;
+        height: 14px;
+        border: 1px solid var(--line);
+        background: var(--bg);
+      }
+      progress::-webkit-progress-bar {
+        background: var(--bg);
+      }
+      progress::-webkit-progress-value {
+        background: linear-gradient(90deg, var(--amber), var(--cyan));
+        box-shadow: 0 0 12px rgba(53, 224, 208, 0.5);
+        transition: width 0.15s linear;
+      }
+      progress::-moz-progress-bar {
+        background: linear-gradient(90deg, var(--amber), var(--cyan));
+      }
+      #progressLabel {
+        font-family: var(--display);
+        font-weight: 600;
+        font-size: 12px;
+        letter-spacing: 0.1em;
+        color: var(--cyan);
+        min-width: 84px;
+        text-align: right;
+      }
+
+      #downloadanchor {
+        font-family: var(--mono);
+        font-size: 13px;
+        color: var(--cyan);
+        text-decoration: none;
+        border-bottom: 1px dashed var(--cyan-dim);
+        padding-bottom: 2px;
+        word-break: break-all;
+        transition: color 0.2s ease, border-color 0.2s ease;
+      }
+      #downloadanchor:empty {
+        display: none;
+      }
+      #downloadanchor::before {
+        content: "↓ ";
+      }
+      #downloadanchor:hover {
+        color: var(--ink);
+        border-color: var(--ink);
+      }
+      .bay .hint {
+        font-size: 11px;
+        letter-spacing: 0.05em;
+        color: var(--faint);
+      }
+
+      footer {
+        margin-top: 42px;
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
+        font-size: 10.5px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--faint);
+      }
+      footer .on {
+        color: var(--cyan);
+      }
+
+      /* ---------- motion ---------- */
+      @keyframes rise {
+        from {
+          opacity: 0;
+          transform: translateY(14px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 0.55;
+        }
+        50% {
+          opacity: 1;
+        }
+      }
+      @keyframes flow {
+        to {
+          stroke-dashoffset: -12;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          animation: none !important;
+          transition: none !important;
+        }
+      }
+
+      /* ---------- responsive ---------- */
+      @media (max-width: 720px) {
+        .channels {
+          grid-template-columns: 1fr;
+          gap: 0;
+        }
+        .link {
+          flex-direction: row;
+          padding: 8px 0;
+        }
+        .link .rail {
+          height: 1px;
+          width: auto;
+          flex: 1;
+          background: repeating-linear-gradient(
+            90deg,
+            var(--line) 0 6px,
+            transparent 6px 12px
+          );
+        }
+        .readout {
+          text-align: left;
+          min-width: 0;
+        }
       }
     </style>
+  </head>
 
-    <h1>P2P File Tansfer (WebRTC)</h1>
-    <p id="connectionStatus">Not connected to peer.</p>
-    <ul style="font-size: 14px; line-height: 1.9; margin-top: 20px">
-      <li>Step 1: Open this page in 2 tabs</li>
-      <li>
-        Step 2: In the first tab, click on create offer and copy the text
-        generated in the text box under Local
-      </li>
-      <li>
-        Step 3: In the second tab, paste the text generated in the text box
-        under Remote
-      </li>
-      <li>
-        Step 4: Click on connect under Remote in the 2nd tab, now copy the text
-        generated in the Local text area.
-      </li>
-      <li>
-        Step 5: Paste this in the Remote text box in 1st tab and click on
-        connect.
-      </li>
-      <li>
-        Connected to peer should populate, and now share files. (Max file size:
-        50mb)
-      </li>
-    </ul>
+  <body>
+    <div class="wrap">
+      <header>
+        <div class="brand">
+          <svg class="glyph" viewBox="0 0 46 46" aria-hidden="true">
+            <line class="wire" x1="12" y1="23" x2="34" y2="23" />
+            <circle class="n1" cx="12" cy="23" r="6" />
+            <circle class="n2" cx="34" cy="23" r="6" />
+          </svg>
+          <div>
+            <div class="wordmark"><b>CROSS</b><i>WIRE</i></div>
+            <div class="tag">Peer-to-peer · no server sees your bytes</div>
+          </div>
+        </div>
+        <div class="readout">
+          <div class="lbl">Link status</div>
+          <p id="connectionStatus">Not connected to peer.</p>
+        </div>
+      </header>
 
-    <div style="display: flex; align-items: center; width: 100%">
-      <div style="width: 50%; background-color: beige; padding: 20px">
-        <h2>Local</h2>
-        <textarea id="localConfigText" cols="50" rows="15"></textarea>
-        <button id="connectLocalConfig">Create local offer</button>
-      </div>
+      <section class="protocol">
+        <h2>Handshake sequence</h2>
+        <ol>
+          <li>Open <strong>CROSSWIRE</strong> in two tabs or on two devices.</li>
+          <li>Tab A: hit <strong>Create offer</strong>, copy Station A's box.</li>
+          <li>Tab B: paste it into Station B, hit <strong>Connect</strong>.</li>
+          <li>Tab B: copy the reply from its Station A box.</li>
+          <li>Tab A: paste the reply into Station B, hit <strong>Connect</strong>.</li>
+          <li>Link goes live — drop a file below. <strong>Max 50 MB.</strong></li>
+        </ol>
+      </section>
 
-      <div style="width: 50%; padding: 20px; background: beige">
-        <h2>Remote</h2>
-        <textarea id="remoteConfigText" cols="50" rows="15"></textarea>
-        <button id="connectRemoteConfig">Connect</button>
-      </div>
+      <section class="channels">
+        <div class="station local">
+          <div class="head">
+            <span class="code">Station A</span>
+            <span class="role">Local · outbound</span>
+          </div>
+          <textarea
+            id="localConfigText"
+            spellcheck="false"
+            placeholder="// your signal appears here once gathering completes — copy it to the other peer"
+          ></textarea>
+          <button id="connectLocalConfig">
+            Create offer <span class="arw">▸</span>
+          </button>
+        </div>
+
+        <div class="link" aria-hidden="true">
+          <div class="rail"></div>
+          <div class="hub">⇄</div>
+          <div class="rail"></div>
+        </div>
+
+        <div class="station remote">
+          <div class="head">
+            <span class="code">Station B</span>
+            <span class="role">Remote · inbound</span>
+          </div>
+          <textarea
+            id="remoteConfigText"
+            spellcheck="false"
+            placeholder="// paste the other peer's signal here, then connect"
+          ></textarea>
+          <button id="connectRemoteConfig">
+            Connect <span class="arw">▸</span>
+          </button>
+        </div>
+      </section>
+
+      <section class="bay">
+        <h2>Transfer bay</h2>
+        <div class="bay-row">
+          <input type="file" id="file-upload" />
+        </div>
+        <div class="meter">
+          <progress id="progress" value="0"></progress>
+          <label id="progressLabel"></label>
+        </div>
+        <a href="" id="downloadanchor"></a>
+        <p class="hint">Bytes travel directly between peers over an encrypted channel. Nothing is uploaded to a server.</p>
+      </section>
+
+      <footer>
+        <span>CROSSWIRE // WebRTC data channel</span>
+        <span class="on">● direct link · no relay stored</span>
+      </footer>
     </div>
-
-    <br />
-    <hr />
-    <br />
-
-    <div>
-      <input type="file" id="file-upload" /><br />
-      <progress id="progress" value="0"></progress>&nbsp;&nbsp;<label
-        id="progressLabel"
-      ></label>
-    </div>
-
-    <br />
-    <hr />
-    <br />
-
-    <a href="" id="downloadanchor"></a>
 
     <script>
       var remoteConnectBtn = document.getElementById("connectRemoteConfig");
@@ -91,7 +726,17 @@
       var progressLabel = document.getElementById("progressLabel");
       var statusEl = document.getElementById("connectionStatus");
 
-      const setStatus = (text) => (statusEl.textContent = text);
+      const setStatus = (text) => {
+        statusEl.textContent = text;
+        // drive the readout color/dot: off | wait | ready | on
+        statusEl.dataset.state = /^Connected/.test(text)
+          ? "on"
+          : /^Ready/.test(text)
+          ? "ready"
+          : /^Gathering/.test(text)
+          ? "wait"
+          : "off";
+      };
 
       let localPeer = new RTCPeerConnection({
         iceServers: [
